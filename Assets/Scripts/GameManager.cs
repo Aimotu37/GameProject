@@ -12,6 +12,8 @@ public class GameManager: MonoBehaviour
     public Sprite Playerportrait1;//切换不同立绘表情
     private bool allInteractionsCompleted = false;
 
+    private bool isDiaryInteracted = false;
+
     private void Awake()
     {
         if (Instance == null)
@@ -56,6 +58,13 @@ public class GameManager: MonoBehaviour
     //交互逻辑------------------------------------------------------------------------------
     public void OnItemInteracted(ItemType itemType)
     {
+        // 检查是否已经交互过日记本
+        if (!isDiaryInteracted && itemType != ItemType.Note)
+        {
+            Debug.Log("你还没有找到日记本，无法与其他物品交互！");
+            return; // 阻止其他物品的交互
+        }
+
         switch (itemType)
         {
             case ItemType.NoteBook:

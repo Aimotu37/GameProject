@@ -69,7 +69,7 @@ public class InteractableItem : MonoBehaviour
             TextMeshProUGUI textComponent = popupPanel.GetComponentInChildren<TextMeshProUGUI>();
             if (textComponent != null)
             {
-                textComponent.text = popupText; // 动态内容
+                textComponent.text = popupText.Replace(@"\n", "\n"); // 动态内容
             }
 
             // 关闭按钮逻辑
@@ -83,11 +83,11 @@ public class InteractableItem : MonoBehaviour
                     StartConversation();
                 });
             }
-
+            /*
             // 显示弹板，关闭后执行 StartConversation
             UIManager.Instance.ShowClue(popupSprite, () => {
                 StartConversation();
-            });
+            });*/
         }
         else
         {
