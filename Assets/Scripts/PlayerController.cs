@@ -66,22 +66,25 @@ public class PlayerController : MonoBehaviour
         movement.y = 0;
 
         // 2. 动画控制：立即响应，无延迟
-        bool isWalking = horizontalInput != 0;
+        bool isWalking = Mathf.Abs(horizontalInput) > 0.1f;
         animator.SetBool("IsWalking", isWalking);
         // 3. 处理人物翻转 
         if (horizontalInput != 0)
         {
-            mySpriteRenderer.flipX = horizontalInput > 0;
+            mySpriteRenderer.flipX = horizontalInput < 0;
         }
 
     }
     void FixedUpdate()
     {
-        // 直接设置速度，避免滑冰效果
-        Vector2 velocity = new Vector2(movement.x * speed, rb.velocity.y);
-
-        // 应用速度
-        rb.velocity = velocity;
+        if (movement.x == 0)
+        {
+            rb.velocity = new Vector2(0, rb.velocity.y);
+        }
+        else
+        {
+            rb.velocity = new Vector2(movement.x * speed, rb.velocity.y);
+        }
 
         // 限制位置范围
         Vector2 clampedPos = rb.position;

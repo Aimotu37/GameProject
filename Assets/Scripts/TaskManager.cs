@@ -18,7 +18,7 @@ public class TaskManager : MonoBehaviour
 
     private void Start()
     {
-        UpdateTaskUI();
+       
     }
 
     // 修改：每个密码位独立记录，防止玩家重复点击同一个物品导致计数错误。
@@ -50,10 +50,18 @@ public class TaskManager : MonoBehaviour
 
     public void ViewNote()
     {
+        if (noteViewed) return;
         noteViewed = true;
         // 第一次查看 Note 时可以触发提示逻辑
     }
     public bool IsNoteViewed() => noteViewed;
+    public void ShowTaskUI()
+    {
+        passwordTaskText.gameObject.SetActive(true);
+        diaryTaskText.gameObject.SetActive(true);
+        UpdateTaskUI();
+    }
+
     private void UpdateTaskUI()
     {
         int passwordCount = (fishCollected ? 1 : 0) + (dollCollected ? 1 : 0) + (awardCollected ? 1 : 0);
@@ -68,6 +76,5 @@ public class TaskManager : MonoBehaviour
     {
         return fishCollected && dollCollected && awardCollected && diaryCollected;
     }
-    // 用于 GameManager 判断日记是否收集，检查是否可交互其他物品。
-    public bool IsDiaryCollected() => diaryCollected;
+
 }

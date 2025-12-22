@@ -4,15 +4,28 @@ using UnityEngine;
 public class GameManager: MonoBehaviour
 {
     public static GameManager Instance;
+    //房间状态机
+    public enum RoomState
+    {
+        Intro,              // 开场对白中
+        NoteLocked,         // 未查看便利贴（密码物件锁定）
+        PasswordCollecting, // 已查看便利贴，可收集密码
+        AllTasksDone,       // 密码+日记完成
+        ReadyToExit         // 点击床后，准备切场
+    }
+    public RoomState CurrentState { get; private set; }
+    
     public DialogueManager dialogueManager;
     public SceneTransitionManager sceneTransitionManager;
     public TaskManager taskManager;
-    public InteractableItem interactableItem;
 
-    public Sprite Playerportrait1;//切换不同立绘表情
-    private bool allInteractionsCompleted = false;
+    public Sprite child_neutral,    // 幼年主控立绘 无表情
+                  child_happy,      // 幼年主控立绘 开心
+                  child_confused,   // 幼年主控立绘 疑惑
+                  child_sad,        // 幼年主控立绘 伤心 / 失落
+                  child_surprised,  // 幼年主控立绘 惊讶
+                  child_pout;       // 幼年主控立绘 不满 / 生气 / 撅嘴 / 撇嘴
 
-    private bool isDiaryInteracted = false;
 
     private void Awake()
     {
@@ -30,126 +43,150 @@ public class GameManager: MonoBehaviour
     private void Start()
     {
         // 播放坐起动画
-      // indObjectOfType<PlayerAnimationController>().PlaySitUpAnimation();
+        // indObjectOfType<PlayerAnimationController>().PlaySitUpAnimation();
 
         // 开场对白
-        StartDialogueSequence();
+
+        EnterState(RoomState.Intro);
+        StartIntroDialogue();
     }
 
-    //开场对白----------------------------------------------------------------------
-    private void StartDialogueSequence()
+    #region ===== State Control =====
+    public void EnterState(RoomState newState)
     {
-        var openingDialogue = new DialogueSession
+        CurrentState = newState;
+        Debug.Log($"[RoomState] -> {newState}");
+
+        if (newState == RoomState.NoteLocked)
+        {
+            taskManager.ShowTaskUI();
+        }
+
+    }
+
+    #endregion
+    #region ===== Intro =====
+
+    private void StartIntroDialogue()
+    {
+        var dialogue = new DialogueSession
         {
             lines = new DialogueLine[]
             {
-                new DialogueLine{speakerName ="主控", text ="又是新的一天开始了。"},
-                new DialogueLine{speakerName ="主控", text ="或许连你自己还没有意识到，这一天多么不同。"},
-                new DialogueLine{speakerName ="主控", text ="我小时候的房间？...我好像还变小了。", portrait = Playerportrait1 }
+                new DialogueLine{ text="又是新的一天开始了。" },
+                new DialogueLine{ text="或许连你自己还没有意识到，这一天多么不同。" },
+                new DialogueLine{ speakerName="主控", text="我小时候的房间？...我好像还变小了。", portrait=child_confused }
             }
         };
 
-        dialogueManager.StartDialogue(openingDialogue, OnDialogueFinished);
-    }
-    private void OnDialogueFinished()
-    {
-        Debug.Log("旁白结束");
-    }
-
-
-    //交互逻辑------------------------------------------------------------------------------
-    public void OnItemInteracted(ItemType itemType)
-    {
-        // 修改：日记未收集前阻止其他交互
-        if (!taskManager.IsNoteViewed() &&
-        (itemType == ItemType.FishTank || itemType == ItemType.Doll || itemType == ItemType.Award))
+        dialogueManager.StartDialogue(dialogue, () =>
         {
-            Debug.Log("请先查看便利贴再操作其他密码物品！");
+            EnterState(RoomState.NoteLocked);
+        });
+    }
+
+    #endregion
+
+    #region ===== Interaction Entry =====
+
+    public void OnItemInteracted(ItemType type)
+    {
+        switch (CurrentState)
+        {
+            case RoomState.Intro:
+                // 完全冻结输入
+                return;
+
+            case RoomState.NoteLocked:
+                HandleNoteLocked(type);
+                break;
+
+            case RoomState.PasswordCollecting:
+                HandlePasswordCollecting(type);
+                break;
+
+            case RoomState.AllTasksDone:
+                HandleAllTasksDone(type);
+                break;
+
+            case RoomState.ReadyToExit:
+                // 终态，不再响应
+                return;
+        }
+    }
+
+    #endregion
+
+
+
+    #region ===== State Handlers =====
+
+    private void HandleNoteLocked(ItemType type)
+    {
+        if (type == ItemType.Bed)
+        {
+            dialogueManager.PlayOneLine("好像还有什么东西没看完……");
+            return;
+        }
+        if (type == ItemType.Note)
+        {
+            taskManager.ViewNote();
+            EnterState(RoomState.PasswordCollecting);
             return;
         }
 
-        switch (itemType)
+        if (type == ItemType.Beads)
         {
-            case ItemType.NoteBook:
-                // 打开密码本界面，假设玩家看完便利贴后再点击物品
-                Debug.Log("点击密码本！");
-                break;
-
-            case ItemType.Note:
-                if (!taskManager.IsNoteViewed())
-                {
-                    Debug.Log("第一次查看便利贴！");
-                    taskManager.ViewNote();
-                    // 可在这里触发 Note 第一次查看对话
-                }
-                else
-                {
-                    Debug.Log("便利贴已查看，第二次及以后点击不再弹出对话");
-                }
-                break;
-
-            case ItemType.Bed:
-                Debug.Log("点击床，检查是否可推进剧情");
-                if (taskManager.AreAllTasksCompleted())
-                {
-                    Debug.Log("所有任务完成，触发床剧情。");
-                    // 播放 DH_003.MP4（可使用 VideoPlayer）
-                    // 然后跳转 script5
-                    /*sceneTransitionManager.SetNextScene("script5");
-                    sceneTransitionManager.TransitionToNextScene();*///暂时未设置视频接口
-                }
-                break;
-
-            case ItemType.FishTank:
-                Debug.Log("触发了鱼缸的交互逻辑！");
-                break;
-
-            case ItemType.Doll:
-                Debug.Log("触发了熊玩偶的交互逻辑！");
-                break;
-
-            case ItemType.Award:
-                Debug.Log($"收集密码物品：{itemType}");
-                taskManager.CollectPassword(itemType);
-                break;
-
-            case ItemType.Beads:
-                Debug.Log("触发了串珠的交互逻辑！");
-                break;
-
-            default:
-                Debug.LogWarning($"未处理的物品类型: {itemType}");
-                break;
+            taskManager.CollectDiary();
+            return;
         }
 
-        // 检查任务是否完成
-        CheckTasks();
+        Debug.Log("请先查看便利贴");
     }
-    private void CheckTasks()
+    private void HandlePasswordCollecting(ItemType type)
     {
+        if (type == ItemType.Bed)
+        {
+            dialogueManager.PlayOneLine("好像还有什么东西没看完……");
+            return;
+        }
+        if (type == ItemType.FishTank ||
+            type == ItemType.Doll ||
+            type == ItemType.Award)
+        {
+            taskManager.CollectPassword(type);
+        }
+        else if (type == ItemType.Beads)
+        {
+            taskManager.CollectDiary();
+        }
+
         if (taskManager.AreAllTasksCompleted())
         {
-            Debug.Log("所有任务完成！准备切换到下一场景。");
-
-            // 设置下一场景并触发场景切换
-            sceneTransitionManager.SetNextScene("NextSceneName"); // 替换为你的场景名称
-            sceneTransitionManager.TransitionToNextScene();
+            EnterState(RoomState.AllTasksDone);
         }
     }
 
-        public void CheckInteractions()
+    private void HandleAllTasksDone(ItemType type)//交互结束
     {
-        if (AllInteractionsCompleted())
+       
+
+        if (type == ItemType.Bed)
         {
-            allInteractionsCompleted = true;
-
-            
-            sceneTransitionManager.TransitionToNextScene();
+            EnterState(RoomState.ReadyToExit);
+            PlayExit();
         }
     }
 
-    private bool AllInteractionsCompleted()
+    #endregion
+    #region ===== Exit =====
+
+    private void PlayExit()
     {
-         return taskManager.AreAllTasksCompleted();
+        sceneTransitionManager.SetNextScene("script5");
+        sceneTransitionManager.TransitionToNextScene();
     }
+
+    #endregion
+
 }

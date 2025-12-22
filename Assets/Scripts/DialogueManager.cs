@@ -17,6 +17,8 @@ public class DialogueManager : MonoBehaviour
 
     [Header("设置")]
     public float typingSpeed = 0.05f;
+    [Header("默认主角立绘")]
+    public Sprite defaultPortrait;
 
     private DialogueSession currentDialogue; // 当前对话数据
     private Queue<DialogueLine> linesQueue = new Queue<DialogueLine>();
@@ -78,6 +80,26 @@ public class DialogueManager : MonoBehaviour
         dialoguePanel.SetActive(true); // 显示对话框
         DisplayNextLine();
     }
+    public void PlayOneLine(string text, string speakerName = "主控", Sprite portrait = null)
+    {
+        // 如果当前正在完整对话中，不打断
+        if (IsDialogueActive) return;
+
+        var tempDialogue = new DialogueSession
+        {
+            lines = new DialogueLine[]
+            {
+            new DialogueLine
+            {
+                speakerName = speakerName,
+                text = text,
+                portrait = portrait
+            }
+            }
+        };
+
+        StartDialogue(tempDialogue);
+    }
 
     // 显示下一句
     private void DisplayNextLine()
@@ -87,11 +109,38 @@ public class DialogueManager : MonoBehaviour
             EndDialogue();
             return;
         }
+        var lines= linesQueue.Dequeue();
+        // ===== 名字处理 =====
+        if (string.IsNullOrEmpty(lines.speakerName))
+        {
+            nameText.gameObject.SetActive(false);
+        }
+        else
+        {
+            nameText.gameObject.SetActive(true);
+            nameText.text = lines.speakerName;
+        }
+        if (lines.portrait != null)
+        {
+            portraitImage.gameObject.SetActive(true);
+            portraitImage.sprite = lines.portrait;
+        }
+        else if (!string.IsNullOrEmpty(lines.speakerName))
+        {
+            // 有说话者，但没指定表情 → 使用默认立绘
+            portraitImage.gameObject.SetActive(true);
+            portraitImage.sprite = defaultPortrait;
+        }
+        else
+        {
+            // 旁白 → 不显示立绘
+            portraitImage.gameObject.SetActive(false);
+        }
 
-        var line = linesQueue.Dequeue();
-        nameText.text = line.speakerName;
-        portraitImage.sprite = line.portrait;
-        currentFullText = line.text;
+        currentFullText = lines.text;
+
+
+        
 
         StartCoroutine(TypeText(currentFullText));
     }
