@@ -34,7 +34,7 @@ public class InteractableItem : MonoBehaviour
     public DialogueSession dialogueData; // 拖入或填写对话内容
     public Sprite popupSprite;
     private bool canInteract = false; // 是否在交互范围内
-
+    private bool isCollected = false;
     void Start()
     {
         if (questionMarkIcon != null) questionMarkIcon.SetActive(false);
@@ -47,16 +47,17 @@ public class InteractableItem : MonoBehaviour
         if (EventSystem.current.IsPointerOverGameObject()) return;
         if (!canInteract) return;
         if (DialogueManager.instance.IsDialogueActive) return;
+        if (isCollected) return; // 防止重复点击
 
         Debug.Log($"点击了物品: {type}");
 
         // 2. 特殊处理：如果是笔记本，可能需要打开特殊的UI面板而不是普通弹板
-        if (type == ItemType.NoteBook)
+       /* if (type == ItemType.NoteBook)
         {
             // 通知 GameManager 处理特殊逻辑（打开书本UI）
             GameManager.Instance.OnItemInteracted(type);
             return;
-        }
+        }*/
 
         // 3. 通用流程：弹板 -> 对话 -> 结束通知
         if (hasPopup && popupPanel != null)
